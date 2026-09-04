@@ -1,13 +1,9 @@
 pipeline {
-
     agent any
 
-    environment {
-        DOCKER_IMAGE = "kubemadhan/hello-devops"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        APP_SERVER = "13.233.152.117"
+    tools {
+        maven 'Maven'
     }
-    
 
     stages {
         stage('Clean Workspace') {
@@ -16,135 +12,68 @@ pipeline {
             }
         }
 
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/Madhanavula/Octabyte-deployment-automation.git'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Verify Tools') {
             steps {
-                sh '''
-                    python3 -m pip install --user -r requirements-dev.txt
-                '''
+                sh 'mvn -version'
             }
         }
 
-        stage('Unit Tests') {
+        stage('Build') {
             steps {
-                sh '''
-                    pytest -v tests/test_unit.py
-                '''
+                sh 'mvn clean package'
             }
         }
-
-        stage('Integration Tests') {
-            steps {
-                sh '''
-                    pytest -v tests/test_integration.py
-                '''
-            }
-        }
-
-        stage('Dependency Vulnerability Scan') {
-            steps {
-                sh '''
-                    pip-audit -r requirements.txt
-                '''
-            }
-        }
-
+        
+        
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker build \
-                    -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
-                    -t ${DOCKER_IMAGE}:latest .
+                docker build -t octabyte:latest .
+                docker tag octabyte:latest kubemadhan/octabyte:latest
+                docker images
                 '''
             }
         }
 
         stage('Push Docker Image') {
             steps {
-
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKER_USERNAME',
-                        passwordVariable: 'DOCKER_PASSWORD'
-                    )
-                ]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
 
                     sh '''
-                        echo "$DOCKER_PASSWORD" | docker login \
-                            -u "$DOCKER_USERNAME" \
-                            --password-stdin
-
-                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-                        docker push ${DOCKER_IMAGE}:latest
-
-                        docker logout
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push kubemadhan/octabye:latest
+                    docker logout
                     '''
                 }
             }
         }
-
-        stage('Deploy to Application Server') {
-
+        
+        stage('Deploy') {
             steps {
-
-                sshagent(['ec2-ssh']) {
-
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no \
-                            ubuntu@${APP_SERVER} \
-                            "docker pull ${DOCKER_IMAGE}:${IMAGE_TAG} && \
-                             docker stop hello-devops || true && \
-                             docker rm hello-devops || true && \
-                             docker run -d \
-                             --name hello-devops \
-                             -p 80:5000 \
-                             ${DOCKER_IMAGE}:${IMAGE_TAG}"
-                    '''
-                }
-            }
-        }
-
-        stage('Smoke Test') {
-
-            steps {
-
                 sh '''
-                    sleep 10
+                docker pull kubemadhan/octabye:latest
 
-                    curl --fail \
-                        http://${APP_SERVER}/health
+                docker stop octabyte || true
+                docker rm octabyte || true
+
+                docker run -d \
+                --name octabyte \
+                -p 8083:8080 \
+                kubemadhan/octabye:latest
                 '''
             }
         }
-    }
-
-    post {
-
-        success {
-
-            slackSend(
-                channel: '#devops-alerts',
-                message: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-            )
-        }
-
-        failure {
-
-            slackSend(
-                channel: '#devops-alerts',
-                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-            )
-        }
-
-        always {
-
-            echo "Build ${env.BUILD_NUMBER} completed."
-        }
+        
     }
 }
