@@ -1,13 +1,7 @@
-FROM python:3.12-slim
+FROM tomcat:10.1-jdk17
 
-WORKDIR /app
+COPY target/my-webapp.war /usr/local/tomcat/webapps/
 
-COPY requirements.txt .
+EXPOSE 8080
 
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app.py .
-
-EXPOSE 5000
-
-CMD ["python", "app.py"]
+CMD ["catalina.sh", "run"]
