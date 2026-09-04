@@ -35,8 +35,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build -t octabyte:latest .
-                docker tag octabyte:latest kubemadhan/octabyte:latest
+                docker build -t hello-devops:latest .
+                docker tag hello-devops:latest kubemadhan/hello-devops:latest
                 docker images
                 '''
             }
@@ -52,7 +52,7 @@ pipeline {
 
                     sh '''
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push kubemadhan/octabye:latest
+                    docker push kubemadhan/hello-devops:latest
                     docker logout
                     '''
                 }
@@ -62,15 +62,15 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                docker pull kubemadhan/octabye:latest
+                docker pull kubemadhan/hello-devops:latest
 
-                docker stop octabyte || true
-                docker rm octabyte || true
+                docker stop hello-devops || true
+                docker rm hello-devops || true
 
                 docker run -d \
-                --name octabyte \
+                --name hello-devops \
                 -p 8083:8080 \
-                kubemadhan/octabye:latest
+                kubemadhan/hello-devops:latest
                 '''
             }
         }
