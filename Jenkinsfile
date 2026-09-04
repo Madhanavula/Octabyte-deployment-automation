@@ -7,13 +7,14 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         APP_SERVER = "13.233.152.117"
     }
-    stage('Clean Workspace') {
+    
+
+    stages {
+        stage('Clean Workspace') {
             steps {
                 cleanWs()
             }
         }
-
-    stages {
 
         stage('Checkout') {
             steps {
