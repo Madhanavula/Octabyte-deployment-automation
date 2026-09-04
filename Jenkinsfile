@@ -3,9 +3,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "YOUR_DOCKERHUB_USERNAME/hello-devops"
+        DOCKER_IMAGE = "kubemadhan/hello-devops"
         IMAGE_TAG = "${BUILD_NUMBER}"
-        APP_SERVER = "YOUR_EC2_PUBLIC_IP"
+        APP_SERVER = "13.233.152.117"
     }
 
     stages {
